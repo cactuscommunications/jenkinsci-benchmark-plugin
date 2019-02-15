@@ -166,28 +166,18 @@ public class MapJsonThreshold {
                             if (value.isJsonPrimitive()) {
                                 JsonPrimitive primitive = value.getAsJsonPrimitive();
                                 if (primitive.isString()) {
-                                    String method = primitive.getAsString().toLowerCase();
-                                    if (method.equals("absolute")){
-                                        AbsoluteThreshold thres = new AbsoluteThreshold(minimum, maximum);
-                                        threshold = thres;
-                                        thresholdDetected = true;
-                                    } else if (method.equals("percentage")) {
-                                        PercentageThreshold thres = new PercentageThreshold(percentage);
-                                        threshold = thres;
-                                        thresholdDetected = true;
-                                    } else if (method.equals("delta")) {
-                                        DeltaThreshold thres = new DeltaThreshold(delta);
-                                        threshold = thres;
-                                        thresholdDetected = true;
-                                    } else if (method.equals("percentageaverage")) {
-                                        PercentageAverageThreshold thres = new PercentageAverageThreshold(percentage);
-                                        threshold = thres;
-                                        thresholdDetected = true;
-                                    } else if (method.equals("deltaaverage")){
-                                        DeltaAverageThreshold thres = new DeltaAverageThreshold(delta);
-                                        threshold = thres;
-                                        thresholdDetected = true;
-                                    }
+                                    String thresholdTypeString = primitive.getAsString().toLowerCase();
+                                    Threshold.ThresholdTypes thresholdType = Threshold.ThresholdTypes.resolve(thresholdTypeString);
+
+                                    threshold = Threshold.ThresholdTypes.resolveNewThreshold(
+                                            thresholdType,
+                                            minimum,
+                                            maximum,
+                                            percentage,
+                                            delta
+                                            );
+                                    thresholdDetected = threshold != null;
+
                                     break;
                                 }
                             }

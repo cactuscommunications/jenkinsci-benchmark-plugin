@@ -211,9 +211,9 @@ public class IntegerCondensed extends IntegerValue {
     public Double getAverage() { return average; }
     public Double getStdDeviation() { return std_deviation; }
     @Override
-    public Double getMinimum() { return minimum.doubleValue(); }
+    public Integer getMinimum() { return minimum; }
     @Override
-    public Double getMaximum() { return maximum.doubleValue(); }
+    public Integer getMaximum() { return maximum; }
     public int getPassed() { return passed; }
     public int getFailed() { return failed; }
 }

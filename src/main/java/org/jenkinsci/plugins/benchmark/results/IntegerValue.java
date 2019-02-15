@@ -1,15 +1,15 @@
 /**
  * MIT license
  * Copyright 2017 Autodesk, Inc.
- *
+ * <p>
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
  * documentation files (the "Software"), to deal in the Software without restriction, including without limitation
  * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
  * and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
- *
+ * <p>
  * The above copyright notice and this permission notice shall be included in all copies or substantial portions
  * of the Software.
- *
+ * <p>
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
  * TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
@@ -24,8 +24,9 @@ import org.jenkinsci.plugins.benchmark.exceptions.ValidationException;
 import org.jenkinsci.plugins.benchmark.thresholds.Threshold;
 
 import java.io.InvalidClassException;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
 
 import static java.lang.Math.sqrt;
 
@@ -35,47 +36,36 @@ import static java.lang.Math.sqrt;
  * @author Daniel Mercier
  * @since 5/10/2017
  */
-public class IntegerValue extends NumeralValue {
-
-    // Variables
-
-    protected final ConcurrentHashMap<Integer, Integer> values;
+public class IntegerValue extends NumeralValue<Integer> {
 
     // Constructor
 
-    public IntegerValue(TestGroup parent, String group,  String name){
+    public IntegerValue(TestGroup parent, String group, String name) {
         super(parent, group, name, null, null, ValueType.rt_integer);
-        this.values = new ConcurrentHashMap<Integer, Integer>();
     }
 
-    public IntegerValue(TestGroup parent, String group, String name, String unit){
+    public IntegerValue(TestGroup parent, String group, String name, String unit) {
         super(parent, group, name, null, unit, ValueType.rt_integer);
-        this.values = new ConcurrentHashMap<Integer, Integer>();
     }
 
-    public IntegerValue(TestGroup parent, String group, String name, String description, String unit){
+    public IntegerValue(TestGroup parent, String group, String name, String description, String unit) {
         super(parent, group, name, description, unit, ValueType.rt_integer);
-        this.values = new ConcurrentHashMap<Integer, Integer>();
     }
 
-    public IntegerValue(TestGroup parent, String name, ClassType ctype){
-        super(parent, null, name, null,null, ValueType.rt_integer, ctype);
-        this.values = new ConcurrentHashMap<Integer, Integer>();
+    public IntegerValue(TestGroup parent, String name, ClassType ctype) {
+        super(parent, null, name, null, null, ValueType.rt_integer, ctype);
     }
 
-    public IntegerValue(TestGroup parent, String name, String unit, ClassType ctype){
+    public IntegerValue(TestGroup parent, String name, String unit, ClassType ctype) {
         super(parent, null, name, null, unit, ValueType.rt_integer, ctype);
-        this.values = new ConcurrentHashMap<Integer, Integer>();
     }
 
-    public IntegerValue(TestGroup parent, String group, String name, String unit, ClassType ctype){
+    public IntegerValue(TestGroup parent, String group, String name, String unit, ClassType ctype) {
         super(parent, group, name, null, unit, ValueType.rt_integer, ctype);
-        this.values = new ConcurrentHashMap<Integer, Integer>();
     }
 
-    public IntegerValue(TestGroup parent, String group, String name, String description, String unit, ClassType ctype){
+    public IntegerValue(TestGroup parent, String group, String name, String description, String unit, ClassType ctype) {
         super(parent, group, name, description, unit, ValueType.rt_integer, ctype);
-        this.values = new ConcurrentHashMap<Integer, Integer>();
     }
 
     // Functions
@@ -85,8 +75,8 @@ public class IntegerValue extends NumeralValue {
      * @param build Build number
      * @return previous
      */
-    public Double getPreviousValue(int build){
-        while (build > 0){
+    public Double getPreviousValue(int build) {
+        while (build > 0) {
             Integer value = this.values.get(build);
             if (value != null) {
                 return value.doubleValue();
@@ -100,12 +90,12 @@ public class IntegerValue extends NumeralValue {
      * Calculate average
      * @return average
      */
-    public Double calculateAverage(){
+    public Double calculateAverage() {
         int number = 0;
         double sum = 0.0;
-        for (Map.Entry<Integer, Integer> entry:this.values.entrySet()) {
+        for (Map.Entry<Integer, Integer> entry : this.values.entrySet()) {
             TestProperty property = this.properties.get(entry.getKey());
-            if (property == null){
+            if (property == null) {
                 sum += entry.getValue();
                 number++;
             } else {
@@ -116,7 +106,7 @@ public class IntegerValue extends NumeralValue {
                 }
             }
         }
-        if (number == 0){
+        if (number == 0) {
             return null;
         } else {
             return sum / number;
@@ -130,7 +120,7 @@ public class IntegerValue extends NumeralValue {
      * @return JSON object
      */
     @Override
-    public JsonObject getCondensedJsonObject (int build, int hash) {
+    public JsonObject getCondensedJsonObject(int build, int hash) {
 
         int failed = 0;
         int passed = 0;
@@ -141,7 +131,7 @@ public class IntegerValue extends NumeralValue {
 
         // Calculate condensed values
         Double average = calculateAverage();
-        if (average != null){
+        if (average != null) {
             int number = 0;
             std_deviation = 0.0;
             for (Map.Entry<Integer, Integer> entry : this.values.entrySet()) {
@@ -161,21 +151,21 @@ public class IntegerValue extends NumeralValue {
                 }
                 if (failedState == null || failedState == false) {
                     Integer value = entry.getValue();
-                    if (number == 0){
+                    if (number == 0) {
                         minimum = value;
                         maximum = value;
                     } else {
                         if (value < minimum) {
                             minimum = value;
-                        } else if (value > maximum){
+                        } else if (value > maximum) {
                             maximum = value;
                         }
                     }
-                    std_deviation += (value - average)*(value - average);
+                    std_deviation += (value - average) * (value - average);
                     number++;
                 }
             }
-            std_deviation = sqrt(std_deviation/number);
+            std_deviation = sqrt(std_deviation / number);
         }
 
         // Assemble JSON object
@@ -188,7 +178,7 @@ public class IntegerValue extends NumeralValue {
             object.addProperty("group", this.group);
         }
         object.addProperty("name", this.name);
-        if(this.description != null && !this.description.isEmpty()) {
+        if (this.description != null && !this.description.isEmpty()) {
             object.addProperty("description", this.description);
         }
         if (this.unit != null && !this.unit.isEmpty()) {
@@ -201,7 +191,7 @@ public class IntegerValue extends NumeralValue {
                 object.addProperty("file", _fileHash);
             }
         }
-        if (average != null){
+        if (average != null) {
             object.addProperty("previous", this.getPreviousValue(build));
             object.addProperty("average", average);
             object.addProperty("std_deviation", std_deviation);
@@ -274,7 +264,7 @@ public class IntegerValue extends NumeralValue {
     @Override
     public String getValueAsLocaleString(int build, char decimalSeparator) {
         Integer value = this.getValue(build);
-        if (value == null){
+        if (value == null) {
             return "";
         } else {
             return value.toString();
@@ -293,7 +283,7 @@ public class IntegerValue extends NumeralValue {
             try {
                 threshold.setAverageValue(average);
                 threshold.setPreviousValue(previous);
-                threshold.isValid(values.get(0));
+                threshold.isValid(values.get(getBuildNumber()));
                 setFailedState(false);
             } catch (ValidationException e) {
                 setMessage(threshold.getName(), e.getMessage());
@@ -301,15 +291,4 @@ public class IntegerValue extends NumeralValue {
             }
         }
     }
-
-    // Setter
-
-    public void setValue( int value ){ this.values.put(0, value); }
-    public void setValue( int build, int value ){ this.values.put(build, value);}
-
-    // Getter
-
-    public Map<Integer, Integer> getValues() { return this.values; }
-    public Integer getValue() throws NullPointerException { return this.values.get(0); }
-    public Integer getValue(int build) throws NullPointerException { return this.values.get(build); }
 }

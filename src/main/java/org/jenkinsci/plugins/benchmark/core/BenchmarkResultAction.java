@@ -260,10 +260,10 @@ public class BenchmarkResultAction implements Action, SimpleBuildStep.LastBuildA
         try {
             MapperBase base = this.core.getMapper();
             NumeralValue value =  (NumeralValue)base.getResults().get(this.core.getSelectedResult());
-            if (value.getMaximum() > value.getMinimum()) {
-                return String.format(Locale.US, "%6g", value.getMinimum() - 0.2 * (value.getMaximum() - value.getMinimum()));
+            if (value.getMaximum().doubleValue() > value.getMinimum().doubleValue()) {
+                return String.format(Locale.US, "%6g", value.getMinimum().doubleValue() - 0.2 * (value.getMaximum().doubleValue() - value.getMinimum().doubleValue()));
             } else {
-                return String.format(Locale.US, "%6g", value.getMaximum() - 0.2 * value.getMaximum());
+                return String.format(Locale.US, "%6g", value.getMaximum().doubleValue() - 0.2 * value.getMaximum().doubleValue());
             }
         } catch (Exception e){
             return "0";
@@ -275,10 +275,10 @@ public class BenchmarkResultAction implements Action, SimpleBuildStep.LastBuildA
         try {
             MapperBase base = this.core.getMapper();
             NumeralValue value =  (NumeralValue)base.getResults().get(this.core.getSelectedResult());
-            if (value.getMaximum() > value.getMinimum()) {
-                return String.format(Locale.US, "%6g", value.getMaximum() + 0.2 * (value.getMaximum() - value.getMinimum()));
+            if (value.getMaximum().doubleValue() > value.getMinimum().doubleValue()) {
+                return String.format(Locale.US, "%6g", value.getMaximum().doubleValue() + 0.2 * (value.getMaximum().doubleValue() - value.getMinimum().doubleValue()));
             } else {
-                return String.format(Locale.US, "%6g", value.getMaximum() + 0.2 * value.getMaximum());
+                return String.format(Locale.US, "%6g", value.getMaximum().doubleValue() + 0.2 * value.getMaximum().doubleValue());
             }
         } catch (Exception e){
             return "10";

@@ -1,15 +1,15 @@
 /**
  * MIT license
  * Copyright 2017 Autodesk, Inc.
- *
+ * <p>
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
  * documentation files (the "Software"), to deal in the Software without restriction, including without limitation
  * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
  * and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
- *
+ * <p>
  * The above copyright notice and this permission notice shall be included in all copies or substantial portions
  * of the Software.
- *
+ * <p>
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
  * TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
@@ -20,12 +20,14 @@ package org.jenkinsci.plugins.benchmark.results;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import org.jenkinsci.plugins.benchmark.core.BenchmarkPublisher;
 import org.jenkinsci.plugins.benchmark.exceptions.ValidationException;
 import org.jenkinsci.plugins.benchmark.thresholds.Threshold;
 
 import java.io.InvalidClassException;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
 
 import static java.lang.Math.sqrt;
 
@@ -35,55 +37,50 @@ import static java.lang.Math.sqrt;
  * @author Daniel Mercier
  * @since 5/10/2017
  */
-public class DoubleValue extends NumeralValue {
-
-    // Variables
-
-    protected final ConcurrentHashMap<Integer, Double> values;
+public class DoubleValue extends NumeralValue<Double> {
 
     // Constructor
 
     public DoubleValue(TestGroup parent, String group, String name) {
         super(parent, group, name, null, null, ValueType.rt_double);
-        this.values = new ConcurrentHashMap<Integer, Double>();
     }
 
     public DoubleValue(TestGroup parent, String group, String name, String unit) {
         super(parent, group, name, null, unit, ValueType.rt_double);
-        this.values = new ConcurrentHashMap<Integer, Double>();
     }
 
     public DoubleValue(TestGroup parent, String group, String name, String description, String unit) {
         super(parent, group, name, description, unit, ValueType.rt_double);
-        this.values = new ConcurrentHashMap<Integer, Double>();
     }
 
     public DoubleValue(TestGroup parent, String group, String name, ClassType ctype) {
         super(parent, group, name, null, null, ValueType.rt_double, ctype);
-        this.values = new ConcurrentHashMap<Integer, Double>();
+
     }
 
     public DoubleValue(TestGroup parent, String group, String name, String unit, ClassType ctype) {
         super(parent, group, name, null, unit, ValueType.rt_double, ctype);
-        this.values = new ConcurrentHashMap<Integer, Double>();
+
     }
 
     public DoubleValue(TestGroup parent, String group, String name, String description, String unit, ClassType ctype) {
         super(parent, group, name, description, unit, ValueType.rt_double, ctype);
-        this.values = new ConcurrentHashMap<Integer, Double>();
+
     }
 
     // Functions
 
+
     /**
      * Get previous build value
+     *
      * @param build Build number
      * @return previous
      */
     public Double getPreviousValue(int build) {
-        while (build > 0){
+        while (build > 0) {
             Double value = this.values.get(build);
-            if (value != null) {
+            if (value != null && !isFailedBuild(build)) {
                 return value;
             }
             build--;
@@ -93,6 +90,7 @@ public class DoubleValue extends NumeralValue {
 
     /**
      * Calculate average
+     *
      * @return average
      */
     public Double calculateAverage() {
@@ -120,12 +118,13 @@ public class DoubleValue extends NumeralValue {
 
     /**
      * Create an JSON object with the condensed information of this result [EXPORT CONDENSED]
+     *
      * @param build Build Number
-     * @param hash Result hash
+     * @param hash  Result hash
      * @return JSON object
      */
     @Override
-    public JsonObject getCondensedJsonObject (int build, int hash) {
+    public JsonObject getCondensedJsonObject(int build, int hash) {
 
         int failed = 0;
         int passed = 0;
@@ -136,7 +135,7 @@ public class DoubleValue extends NumeralValue {
 
         // Calculate condensed values
         Double average = calculateAverage();
-        if (average != null){
+        if (average != null) {
             int number = 0;
             std_deviation = 0.0;
             for (Map.Entry<Integer, Double> entry : this.values.entrySet()) {
@@ -156,26 +155,27 @@ public class DoubleValue extends NumeralValue {
                 }
                 if (failedState == null || failedState == false) {
                     Double value = entry.getValue();
-                    if (number == 0){
+                    if (number == 0) {
                         minimum = value;
                         maximum = value;
                     } else {
                         if (value < minimum) {
                             minimum = value;
-                        } else if (value > maximum){
+                        } else if (value > maximum) {
                             maximum = value;
                         }
                     }
-                    std_deviation += (value - average)*(value - average);
+                    std_deviation += (value - average) * (value - average);
                     number++;
                 }
             }
-            std_deviation = sqrt(std_deviation/number);
+            std_deviation = sqrt(std_deviation / number);
         }
 
         // Assemble JSON object
         JsonObject object = new JsonObject();
         object.addProperty("hash", hash);
+
         if (this.getFileGroup() != null) {
             object.addProperty("file", this.getFileGroup().getGroupHash());
         }
@@ -186,7 +186,7 @@ public class DoubleValue extends NumeralValue {
         if (this.description != null && !this.description.isEmpty()) {
             object.addProperty("description", this.description);
         }
-        if(this.unit != null && !this.unit.isEmpty()) {
+        if (this.unit != null && !this.unit.isEmpty()) {
             object.addProperty("unit", this.unit);
         }
         object.addProperty("type", outputType(this.type));
@@ -196,20 +196,23 @@ public class DoubleValue extends NumeralValue {
                 object.addProperty("file", _fileHash);
             }
         }
-        if (average != null){
+        if (average != null) {
             object.addProperty("previous", this.getPreviousValue(build));
             object.addProperty("average", average);
             object.addProperty("std_deviation", std_deviation);
             object.addProperty("minimum", minimum);
             object.addProperty("maximum", maximum);
         }
+
         object.addProperty("failed", failed);
         object.addProperty("passed", passed);
+
         return object;
     }
 
     /**
      * Create JSON object containing all results necessary to display the graph [DETAIL PAGE]
+     *
      * @param buildNumbers List of builds
      * @return Json object
      * @throws InvalidClassException Invalid class
@@ -235,6 +238,7 @@ public class DoubleValue extends NumeralValue {
     /**
      * Get last build result content in Json Object [EXPORT RAW]
      * Works with TestValue getJsonObject()
+     *
      * @param hash Result hash
      * @return Json object
      */
@@ -247,6 +251,7 @@ public class DoubleValue extends NumeralValue {
 
     /**
      * Return last value as string in default locale [TABLE PAGE][DETAIL PAGE]
+     *
      * @param build Build number
      * @return String of value
      */
@@ -262,7 +267,8 @@ public class DoubleValue extends NumeralValue {
 
     /**
      * Return last value as string in locale format [TABLE PAGE][DETAIL PAGE]
-     * @param build Build number
+     *
+     * @param build            Build number
      * @param decimalSeparator Decimal separator
      * @return String of value
      */
@@ -278,35 +284,28 @@ public class DoubleValue extends NumeralValue {
 
     /**
      * Check attached thresholds to verify result validity.
+     *
      * @param previous Previous value
-     * @param average Calculated average
+     * @param average  Calculated average
      */
     @Override
     public void checkThresholdStatus(Double previous, Double average) {
-        List<Threshold> list = getAllConnectedThresholds();
+        final List<Threshold> list = getAllConnectedThresholds();
         for (Threshold threshold : list) {
             try {
                 threshold.setAverageValue(average);
                 threshold.setPreviousValue(previous);
-                threshold.isValid(values.get(0));
-                setFailedState(false);
+                threshold.setMaximumValue(getMaximum());
+                threshold.setMinimumValue(getMinimum());
+
+                BenchmarkPublisher.logger.println("Values" + values.toString());
+
+                setFailedState(!threshold.isValid(values.get(getBuildNumber())));
+
             } catch (ValidationException e) {
                 setMessage(threshold.getName(), e.getMessage());
                 setFailedState(true);
             }
         }
     }
-
-    // Setter
-
-    public void setValue(double value) { this.values.put(0, value); }
-    public void setValue(int build, double value) { this.values.put(build, value); }
-
-    // Getter
-
-    public Map<Integer, Double> getValues() { return this.values; }
-    public Double getValue() throws NullPointerException { return this.values.get(0); }
-    public Double getValue(int build) throws NullPointerException { return this.values.get(build); }
-
-
 }

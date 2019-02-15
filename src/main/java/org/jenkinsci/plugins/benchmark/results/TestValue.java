@@ -1,15 +1,15 @@
 /**
  * MIT license
  * Copyright 2017 Autodesk, Inc.
- *
+ * <p>
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
  * documentation files (the "Software"), to deal in the Software without restriction, including without limitation
  * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
  * and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
- *
+ * <p>
  * The above copyright notice and this permission notice shall be included in all copies or substantial portions
  * of the Software.
- *
+ * <p>
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
  * TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
@@ -26,6 +26,7 @@ import org.jenkinsci.plugins.benchmark.condensed.BooleanCondensed;
 import org.jenkinsci.plugins.benchmark.condensed.DoubleCondensed;
 import org.jenkinsci.plugins.benchmark.condensed.IntegerCondensed;
 import org.jenkinsci.plugins.benchmark.condensed.StringCondensed;
+import org.jenkinsci.plugins.benchmark.core.BenchmarkPublisher;
 import org.jenkinsci.plugins.benchmark.utilities.ContentDetected;
 import org.jenkinsci.plugins.benchmark.utilities.TextToHTML;
 
@@ -39,7 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author Daniel Mercier
  * @since 5/10/2017
  */
-public class TestValue extends TestGroup {
+public abstract class TestValue<T> extends TestGroup {
 
     // Public enumeration
 
@@ -56,61 +57,97 @@ public class TestValue extends TestGroup {
     public static final String FAILED_STATE_COLOR = "#F37A7A";
     public static final String PASSED_STATE_COLOR = "#92D050";
 
-    protected final ValueType           type;
-    protected String                    group;
-    protected String                    unit;
+    protected final ValueType type;
+    protected String group;
+    protected String unit;
+    private Integer buildNumber = 0;
 
+    public Integer getBuildNumber() {
+        return buildNumber;
+    }
+
+    public void setBuildNumber(Integer buildNumber) {
+        this.buildNumber = buildNumber;
+    }
+
+    protected final ConcurrentHashMap<Integer, T> values;
     protected final ConcurrentHashMap<Integer, TestProperty> properties = new ConcurrentHashMap<Integer, TestProperty>();
 
     // Constructor
-
     TestValue(TestGroup parent, String group, String name, String description, String unit, ValueType type) {
         super(parent, name, description, ClassType.ct_result);
         this.type = type;
         this.unit = unit;
-        if (group == null){
+        if (group == null) {
             this.group = this.getParent().getFileSubGroupFullName();
         } else {
             this.group = group;
         }
+
+        values = new ConcurrentHashMap<>();
     }
 
     TestValue(TestGroup parent, String group, String name, String description, String unit, ValueType type, ClassType ctype) {
         super(parent, name, description, ctype);
         this.type = type;
         this.unit = unit;
-        if (group == null){
+        if (group == null) {
             this.group = this.getParent().getFileSubGroupFullName();
         } else {
             this.group = group;
         }
+
+        values = new ConcurrentHashMap<>();
+    }
+
+    // Setter
+    public void setValue(T value) {
+        values.put(getBuildNumber(), value);
+    }
+
+    public void setValue(Integer build, T value) {
+        values.put(build, value);
+    }
+
+    // Getter
+    public T getValue(Integer build) throws NullPointerException {
+        return this.values.get(build);
+    }
+
+    public T getValue() throws NullPointerException {
+        return this.values.get(getBuildNumber());
+    }
+
+    public Map<Integer, T> getValues() {
+        return values;
     }
 
     // Function
 
     /**
      * Convert a JSON object containing a condensed result to the plugin construct [DISPLAY LOADING]
-     * @param object Json Object to convert
-     * @param rootGroup Root group
-     * @param fileList List of files
+     *
+     * @param object     Json Object to convert
+     * @param rootGroup  Root group
+     * @param fileList   List of files
      * @param entityList List of generated entities
-     * @param detected Key characteristics fo results
+     * @param detected   Key characteristics fo results
      */
     public static void convertCondensedResultJsonObject(JsonObject object, TestGroup rootGroup, Map<Integer, TestGroup> fileList, Map<Integer, TestValue> entityList, ContentDetected detected) {
-        Integer         _hash = null;
-        String          _name = null;
-        String          _group = null;
-        String          _description = null;
-        String          _unit = null;
-        Double          _previous = null;
-        Double          _maximum = null;
-        Double          _minimum = null;
-        Double          _average = null;
-        Double          _std_deviation = null;
-        Integer         _passed = null;
-        Integer         _failed = null;
-        TestGroup       _file = rootGroup;
-        ValueType       _type = ValueType.rt_unknown;
+        Integer _hash = null;
+        String _name = null;
+        String _group = null;
+        String _description = null;
+        String _unit = null;
+        Double _previous = null;
+        Double _maximum = null;
+        Double _minimum = null;
+        Double _average = null;
+        Double _std_deviation = null;
+        Integer _passed = null;
+        Integer _failed = null;
+        TestGroup _file = rootGroup;
+        ValueType _type = ValueType.rt_unknown;
 
         for (Map.Entry<String, JsonElement> enObject : object.entrySet()) {
             String key = enObject.getKey().toLowerCase();
@@ -163,7 +200,7 @@ public class TestValue extends TestGroup {
                         detected.setUnitsDetected(true);
                     }
                 }
-            }else if (key.equals("passed")) {
+            } else if (key.equals("passed")) {
                 JsonElement enElement = enObject.getValue();
                 if (enElement.isJsonPrimitive()) {
                     JsonPrimitive primitive = enElement.getAsJsonPrimitive();
@@ -232,47 +269,48 @@ public class TestValue extends TestGroup {
                 }
             }
         }
-        switch(_type) {
+        switch (_type) {
             case rt_integer:
-                IntegerCondensed int_result = new IntegerCondensed(_file, _group,  _name, _description, _unit, _previous.intValue(), _minimum.intValue(), _maximum.intValue(), _average, _std_deviation, _passed, _failed);
+                IntegerCondensed int_result = new IntegerCondensed(_file, _group, _name, _description, _unit, _previous.intValue(), _minimum.intValue(), _maximum.intValue(), _average, _std_deviation, _passed, _failed);
                 entityList.put(_hash, int_result);
                 detected.setNumeralDetected(true);
                 break;
             case rt_double:
-                DoubleCondensed dbl_result = new DoubleCondensed(_file, _group,  _name, _description, _unit, _previous, _minimum, _maximum, _average, _std_deviation, _passed, _failed);
+                DoubleCondensed dbl_result = new DoubleCondensed(_file, _group, _name, _description, _unit, _previous, _minimum, _maximum, _average, _std_deviation, _passed, _failed);
                 entityList.put(_hash, dbl_result);
                 detected.setNumeralDetected(true);
                 break;
             case rt_string:
-                StringCondensed str_result = new StringCondensed(_file, _group,  _name, _description, _unit, _passed, _failed);
+                StringCondensed str_result = new StringCondensed(_file, _group, _name, _description, _unit, _passed, _failed);
                 entityList.put(_hash, str_result);
                 break;
             case rt_boolean:
-                BooleanCondensed bool_result = new BooleanCondensed(_file, _group,  _name, _description, _unit, _passed, _failed);
+                BooleanCondensed bool_result = new BooleanCondensed(_file, _group, _name, _description, _unit, _passed, _failed);
                 entityList.put(_hash, bool_result);
                 break;
             default:
         }
-        if (_group != null){
+        if (_group != null) {
             detected.setGroupDetected(true);
         }
     }
 
     /**
      * Convert a JSON object containing a parameter to the plugin construct [DISPLAY LOADING]
-     * @param object Json Object to convert
-     * @param rootGroup Root group
+     *
+     * @param object     Json Object to convert
+     * @param rootGroup  Root group
      * @param entityList List of generated entities
-     * @param detected Key characteristics fo results
+     * @param detected   Key characteristics fo results
      */
     public static void convertCondensedParameterJsonObject(JsonObject object, TestGroup rootGroup, Map<Integer, TestValue> entityList, ContentDetected detected) {
-        Integer         _hash = null;
-        String          _name = null;
-        String          _group = null;
-        String          _description = null;
-        String          _unit = null;
-        TestGroup       _file = rootGroup;
-        ValueType       _type = ValueType.rt_unknown;
+        Integer _hash = null;
+        String _name = null;
+        String _group = null;
+        String _description = null;
+        String _unit = null;
+        TestGroup _file = rootGroup;
+        ValueType _type = ValueType.rt_unknown;
 
         for (Map.Entry<String, JsonElement> enObject : object.entrySet()) {
             String key = enObject.getKey().toLowerCase();
@@ -326,21 +364,21 @@ public class TestValue extends TestGroup {
                 }
             }
         }
-        switch(_type) {
+        switch (_type) {
             case rt_integer:
-                IntegerValue int_result = new IntegerValue(_file, _group,  _name, _description, _unit);
+                IntegerValue int_result = new IntegerValue(_file, _group, _name, _description, _unit);
                 entityList.put(_hash, int_result);
                 break;
             case rt_double:
-                DoubleValue dbl_result = new DoubleValue(_file,  _group,  _name, _description, _unit);
+                DoubleValue dbl_result = new DoubleValue(_file, _group, _name, _description, _unit);
                 entityList.put(_hash, dbl_result);
                 break;
             case rt_string:
-                StringValue str_result = new StringValue(_file, _group,  _name, _description, _unit);
+                StringValue str_result = new StringValue(_file, _group, _name, _description, _unit);
                 entityList.put(_hash, str_result);
                 break;
             case rt_boolean:
-                BooleanValue bool_result = new BooleanValue(_file, _group,  _name, _description, _unit);
+                BooleanValue bool_result = new BooleanValue(_file, _group, _name, _description, _unit);
                 entityList.put(_hash, bool_result);
                 break;
             default:
@@ -349,21 +387,22 @@ public class TestValue extends TestGroup {
 
     /**
      * Convert result/parameter content to the plug-in construct [DISPLAY LOAD]
-     * @param build Build number
-     * @param object Object to convert
-     * @param rootGroup Root group
-     * @param fileList List of files
+     *
+     * @param build      Build number
+     * @param object     Object to convert
+     * @param rootGroup  Root group
+     * @param fileList   List of files
      * @param entityList List of result/parameter entities
-     * @param paramList List of parameters
+     * @param paramList  List of parameters
      */
     public static void convertResultJsonObject(int build, JsonObject object, TestGroup rootGroup, Map<Integer, TestGroup> fileList, Map<Integer, TestValue> entityList, Map<Integer, TestValue> paramList) {
 
-        Integer             _hash = null;
-        Integer             _id = null;
-        Boolean             _failedState = null;
-        JsonPrimitive       _value = null;
+        Integer _hash = null;
+        Integer _id = null;
+        Boolean _failedState = null;
+        JsonPrimitive _value = null;
         Map<String, String> _messages = new HashMap<String, String>();
-        List<TestValue>     _parameters = new ArrayList<TestValue>();
+        List<TestValue> _parameters = new ArrayList<TestValue>();
 
 
         for (Map.Entry<String, JsonElement> enObject : object.entrySet()) {
@@ -448,13 +487,13 @@ public class TestValue extends TestGroup {
             }
         }
         TestValue res = entityList.get(_hash);
-        if (res == null){
-            String      _name = null;
-            String      _group = null;
-            String      _description = null;
-            String      _unit = null;
-            ValueType   _type = ValueType.rt_unknown;
-            TestGroup  _file = rootGroup;
+        if (res == null) {
+            String _name = null;
+            String _group = null;
+            String _description = null;
+            String _unit = null;
+            ValueType _type = ValueType.rt_unknown;
+            TestGroup _file = rootGroup;
             for (Map.Entry<String, JsonElement> enObject : object.entrySet()) {
                 String key = enObject.getKey().toLowerCase();
                 if (key.equals("name")) {
@@ -512,7 +551,7 @@ public class TestValue extends TestGroup {
             }
             switch (_type) {
                 case rt_boolean:
-                    BooleanValue bool_value = new BooleanValue (_file, null, _name, _description, _unit);
+                    BooleanValue bool_value = new BooleanValue(_file, null, _name, _description, _unit);
                     bool_value.setValue(build, _value.getAsBoolean());
                     bool_value.setGroup(_group);
                     entityList.put(_hash, bool_value);
@@ -523,7 +562,7 @@ public class TestValue extends TestGroup {
                     break;
 
                 case rt_string:
-                    StringValue str_value = new StringValue (_file, null, _name, _description, _unit);
+                    StringValue str_value = new StringValue(_file, null, _name, _description, _unit);
                     str_value.setValue(build, _value.getAsString());
                     str_value.setGroup(_group);
                     entityList.put(_hash, str_value);
@@ -534,9 +573,12 @@ public class TestValue extends TestGroup {
                     break;
 
                 case rt_double:
-                    DoubleValue dbl_value = new DoubleValue (_file, null, _name, _description, _unit);
+                    DoubleValue dbl_value = new DoubleValue(_file, null, _name, _description, _unit);
                     dbl_value.setValue(build, _value.getAsDouble());
                     dbl_value.setGroup(_group);
+
+                    BenchmarkPublisher.logger.println("_hash:" + _hash + " build:" + build + " _value.getAsDouble():" + _value.getAsDouble());
+
                     entityList.put(_hash, dbl_value);
                     if (paramList != null) {
                         _file.addGroup(dbl_value);
@@ -545,7 +587,7 @@ public class TestValue extends TestGroup {
                     break;
 
                 case rt_integer:
-                    IntegerValue int_value = new IntegerValue (_file, null, _name, _description, _unit);
+                    IntegerValue int_value = new IntegerValue(_file, null, _name, _description, _unit);
                     int_value.setValue(build, _value.getAsInt());
                     int_value.setGroup(_group);
                     entityList.put(_hash, int_value);
@@ -558,8 +600,8 @@ public class TestValue extends TestGroup {
                 default:
             }
         }
-        if (res != null){
-            if (_value != null){
+        if (res != null) {
+            if (_value != null) {
                 ValueType type = res.getType();
                 switch (type) {
                     case rt_boolean:
@@ -610,16 +652,17 @@ public class TestValue extends TestGroup {
 
     /**
      * Convert result/parameter content to the plug-in construct [DISPLAY LOAD]
-     * @param build Build number
-     * @param object Object to convert
-     * @param rootGroup Root group
+     *
+     * @param build      Build number
+     * @param object     Object to convert
+     * @param rootGroup  Root group
      * @param entityList List of result/parameter entities
      */
     public static void convertParameterJsonObject(int build, JsonObject object, TestGroup rootGroup, Map<Integer, TestValue> entityList) {
 
-        Integer             _hash = null;
-        TestGroup           _file = rootGroup;
-        JsonPrimitive       _value = null;
+        Integer _hash = null;
+        TestGroup _file = rootGroup;
+        JsonPrimitive _value = null;
 
         for (Map.Entry<String, JsonElement> enObject : object.entrySet()) {
             String key = enObject.getKey().toLowerCase();
@@ -639,59 +682,70 @@ public class TestValue extends TestGroup {
             }
         }
         TestValue res = entityList.get(_hash);
-        if (res == null){
-            String      _name = null;
-            String      _group = null;
-            String      _description = null;
-            String      _unit = null;
-            ValueType   _type = ValueType.rt_unknown;
+        if (res == null) {
+            String _name = null;
+            String _group = null;
+            String _description = null;
+            String _unit = null;
+            ValueType _type = ValueType.rt_unknown;
             for (Map.Entry<String, JsonElement> enObject : object.entrySet()) {
                 String key = enObject.getKey().toLowerCase();
-                if (key.equals("name")) {
-                    JsonElement value = enObject.getValue();
-                    if (value.isJsonPrimitive()) {
-                        JsonPrimitive primitive = value.getAsJsonPrimitive();
-                        if (primitive.isString()) {
-                            _name = primitive.getAsString();
+                switch (key) {
+                    case "name": {
+                        JsonElement value = enObject.getValue();
+                        if (value.isJsonPrimitive()) {
+                            JsonPrimitive primitive = value.getAsJsonPrimitive();
+                            if (primitive.isString()) {
+                                _name = primitive.getAsString();
+                            }
                         }
+                        break;
                     }
-                } else if (key.equals("group")) {
-                    JsonElement value = enObject.getValue();
-                    if (value.isJsonPrimitive()) {
-                        JsonPrimitive primitive = value.getAsJsonPrimitive();
-                        if (primitive.isString()) {
-                            _group = primitive.getAsString();
+                    case "group": {
+                        JsonElement value = enObject.getValue();
+                        if (value.isJsonPrimitive()) {
+                            JsonPrimitive primitive = value.getAsJsonPrimitive();
+                            if (primitive.isString()) {
+                                _group = primitive.getAsString();
+                            }
                         }
+                        break;
                     }
-                } else if (key.equals("description")) {
-                    JsonElement value = enObject.getValue();
-                    if (value.isJsonPrimitive()) {
-                        JsonPrimitive primitive = value.getAsJsonPrimitive();
-                        if (primitive.isString()) {
-                            _description = primitive.getAsString();
+                    case "description": {
+                        JsonElement value = enObject.getValue();
+                        if (value.isJsonPrimitive()) {
+                            JsonPrimitive primitive = value.getAsJsonPrimitive();
+                            if (primitive.isString()) {
+                                _description = primitive.getAsString();
+                            }
                         }
+                        break;
                     }
-                } else if (key.equals("unit")) {
-                    JsonElement value = enObject.getValue();
-                    if (value.isJsonPrimitive()) {
-                        JsonPrimitive primitive = value.getAsJsonPrimitive();
-                        if (primitive.isString()) {
-                            _unit = primitive.getAsString();
+                    case "unit": {
+                        JsonElement value = enObject.getValue();
+                        if (value.isJsonPrimitive()) {
+                            JsonPrimitive primitive = value.getAsJsonPrimitive();
+                            if (primitive.isString()) {
+                                _unit = primitive.getAsString();
+                            }
                         }
+                        break;
                     }
-                } else if (key.equals("type")) {
-                    JsonElement value = enObject.getValue();
-                    if (value.isJsonPrimitive()) {
-                        JsonPrimitive primitive = value.getAsJsonPrimitive();
-                        if (primitive.isString()) {
-                            _type = checkType(primitive.getAsString());
+                    case "type": {
+                        JsonElement value = enObject.getValue();
+                        if (value.isJsonPrimitive()) {
+                            JsonPrimitive primitive = value.getAsJsonPrimitive();
+                            if (primitive.isString()) {
+                                _type = checkType(primitive.getAsString());
+                            }
                         }
+                        break;
                     }
                 }
             }
             switch (_type) {
                 case rt_boolean:
-                    BooleanValue bool_value = new BooleanValue (_file, null, _name, _description, _unit);
+                    BooleanValue bool_value = new BooleanValue(_file, null, _name, _description, _unit);
                     bool_value.setValue(build, _value.getAsBoolean());
                     bool_value.setGroup(_group);
                     entityList.put(_hash, bool_value);
@@ -699,7 +753,7 @@ public class TestValue extends TestGroup {
                     break;
 
                 case rt_string:
-                    StringValue str_value = new StringValue (_file, null, _name, _description, _unit);
+                    StringValue str_value = new StringValue(_file, null, _name, _description, _unit);
                     str_value.setValue(build, _value.getAsString());
                     str_value.setGroup(_group);
                     entityList.put(_hash, str_value);
@@ -707,7 +761,7 @@ public class TestValue extends TestGroup {
                     break;
 
                 case rt_double:
-                    DoubleValue dbl_value = new DoubleValue (_file, null, _name, _description, _unit);
+                    DoubleValue dbl_value = new DoubleValue(_file, null, _name, _description, _unit);
                     dbl_value.setValue(build, _value.getAsDouble());
                     dbl_value.setGroup(_group);
                     entityList.put(_hash, dbl_value);
@@ -715,7 +769,7 @@ public class TestValue extends TestGroup {
                     break;
 
                 case rt_integer:
-                    IntegerValue int_value = new IntegerValue (_file, null, _name, _description, _unit);
+                    IntegerValue int_value = new IntegerValue(_file, null, _name, _description, _unit);
                     int_value.setValue(build, _value.getAsInt());
                     int_value.setGroup(_group);
                     entityList.put(_hash, int_value);
@@ -724,8 +778,8 @@ public class TestValue extends TestGroup {
                 default:
             }
         }
-        if (res != null){
-            if (_value != null){
+        if (res != null) {
+            if (_value != null) {
                 ValueType type = res.getType();
                 switch (type) {
                     case rt_boolean:
@@ -763,7 +817,8 @@ public class TestValue extends TestGroup {
 
     /**
      * Generate the HTML table content for this result [DETAIL PAGE]
-     * @param builds List of build numbers
+     *
+     * @param builds           List of build numbers
      * @param decimalSeparator Decimal Separator
      * @return HTML content for this result
      */
@@ -775,7 +830,7 @@ public class TestValue extends TestGroup {
                 content.append("<td>-</td>");
             } else {
                 Boolean state = this.getFailedState(build);
-                if (state == null){
+                if (state == null) {
                     content.append("<td>");
                     content.append(value.toString());
                     content.append("</td>");
@@ -795,24 +850,25 @@ public class TestValue extends TestGroup {
     /**
      * Export result property to Json object [EXPORT RAW]
      * Works in combination with getJsonObject() from result specific formats
+     *
      * @param hash Result hash
      * @return Json Object
      */
     @Override
-    public JsonObject getJsonObject(int hash){
+    public JsonObject getJsonObject(int hash) {
         JsonObject object = new JsonObject();
-        if (this.getName() != null){
+        if (this.getName() != null) {
             object.addProperty("hash", hash);
         }
         if (this.getId() != null) {
             object.addProperty("id", this.getId());
         }
         if (this.getFailedState() != null) {
-            object.addProperty("failedState",  this.getFailedState());
+            object.addProperty("failedState", this.getFailedState(buildNumber));
         }
-        Map<String,String> messages =  this.getMessages();
+        Map<String, String> messages = this.getMessages();
         if (messages != null) {
-            if(messages.size() > 0) {
+            if (messages.size() > 0) {
                 JsonArray arrayMessages = new JsonArray();
                 for (Map.Entry<String, String> message : this.getMessages().entrySet()) {
                     JsonObject objectMessage = new JsonObject();
@@ -827,7 +883,7 @@ public class TestValue extends TestGroup {
             boolean detParameters = false;
             JsonArray arrayParameters = new JsonArray();
             List<TestGroup> parameters = this.getAllConnectedParameters();
-            for (TestGroup parameter:parameters) {
+            for (TestGroup parameter : parameters) {
                 arrayParameters.add(parameter.getGroupHash());
                 detParameters = true;
             }
@@ -840,6 +896,7 @@ public class TestValue extends TestGroup {
 
     /**
      * Create an JSON object from a parameter [EXPORT CONDENSED]
+     *
      * @param hash Result hash
      * @return JSON object
      */
@@ -847,18 +904,18 @@ public class TestValue extends TestGroup {
         // Assemble JSON object
         JsonObject object = new JsonObject();
         object.addProperty("hash", hash);
-        if ( this.getFileGroup() != null) {
+        if (this.getFileGroup() != null) {
             object.addProperty("file", this.getFileGroup().getGroupHash());
         }
-        if(group != null && !this.group.isEmpty()) {
+        if (group != null && !this.group.isEmpty()) {
             object.addProperty("group", this.group);
         }
         object.addProperty("name", this.name);
-        if(this.description != null && !this.description.isEmpty()) {
+        if (this.description != null && !this.description.isEmpty()) {
             object.addProperty("description", this.description);
         }
         object.addProperty("type", outputType(type));
-        if (this.getUnit() != null && !this.getUnit().isEmpty()){
+        if (this.getUnit() != null && !this.getUnit().isEmpty()) {
             object.addProperty("unit", this.getUnit());
         }
         return object;
@@ -866,7 +923,8 @@ public class TestValue extends TestGroup {
 
     /**
      * Generate the HTML detail content for this result and for a determined build [DETAIL PAGE]
-     * @param build Build number
+     *
+     * @param build            Build number
      * @param decimalSeparator Decimal Separator
      * @return HTML detail for this result
      */
@@ -929,9 +987,9 @@ public class TestValue extends TestGroup {
             content.append("</td></tr>");
         }
         // Messages by nature should use as much width so the content is contained in one cell row.
-        Map<String,String> messages = this.getMessages(build);
+        Map<String, String> messages = this.getMessages(build);
         if (messages != null && messages.size() != 0) {
-            for(Map.Entry<String,String> entry: messages.entrySet()){
+            for (Map.Entry<String, String> entry : messages.entrySet()) {
                 content.append("<tr><td colspan=\"2\">");
                 content.append(entry.getKey());
                 content.append(":<p>");
@@ -944,11 +1002,12 @@ public class TestValue extends TestGroup {
 
     /**
      * Generate the HTML raw table content for this result [TABLE PAGE]
-     * @param key Result hash value
-     * @param detected Key characteristic of this set of results
-     * @param builds List of build numbers
-     * @param listNPassed Number of passed result test for each build
-     * @param listNFailed Number of passed result test for each build
+     *
+     * @param key              Result hash value
+     * @param detected         Key characteristic of this set of results
+     * @param builds           List of build numbers
+     * @param listNPassed      Number of passed result test for each build
+     * @param listNFailed      Number of passed result test for each build
      * @param decimalSeparator Decimal Separator
      * @return HTML table content for this result
      */
@@ -956,11 +1015,11 @@ public class TestValue extends TestGroup {
         StringBuffer content = new StringBuffer();
         content.append("<tr><td>");
         if (detected.isFileDetected()) {
-            if (this.getParent() == null){
+            if (this.getParent() == null) {
                 content.append("</td><td>");
             } else {
                 String name = this.getParent().getName();
-                if ( name.equalsIgnoreCase("__root__")){
+                if (name.equalsIgnoreCase("__root__")) {
                     content.append("</td><td>");
                 } else {
                     content.append(name);
@@ -969,7 +1028,7 @@ public class TestValue extends TestGroup {
             }
         }
         if (detected.isGroupDetected()) {
-            if (this.getGroup() == null){
+            if (this.getGroup() == null) {
                 content.append("</td><td>");
             } else {
                 content.append(this.getGroup());
@@ -994,7 +1053,7 @@ public class TestValue extends TestGroup {
                 content.append("</td><td>");
             } else {
                 Boolean failedState = this.getFailedState(build);
-                if (failedState == null){
+                if (failedState == null) {
                     content.append("</td><td>");
                     if (!value.equals("__boolean__")) content.append(value);
                 } else {
@@ -1002,7 +1061,7 @@ public class TestValue extends TestGroup {
                     content.append(this.getColor(failedState));
                     content.append("\">");
                     if (!value.equals("__boolean__")) content.append(value);
-                    if (failedState){
+                    if (failedState) {
                         listNFailed.set(index, listNFailed.get(index) + 1);
                     } else {
                         listNPassed.set(index, listNPassed.get(index) + 1);
@@ -1017,18 +1076,19 @@ public class TestValue extends TestGroup {
 
     /**
      * Generate the CSV table content for this result [CSV EXPORT]
-     * @param builds List of build numbers
+     *
+     * @param builds   List of build numbers
      * @param detected Key characteristic of this set of results
      * @return CSV table content for result
      */
     public String getCSVResult(TreeSet<Integer> builds, ContentDetected detected) {
         StringBuffer content = new StringBuffer();
         if (detected.isFileDetected()) {
-            if (this.getParent() == null){
+            if (this.getParent() == null) {
                 content.append(',');
             } else {
                 String name = this.getParent().getName();
-                if ( name.equalsIgnoreCase("__root__")){
+                if (name.equalsIgnoreCase("__root__")) {
                     content.append(',');
                 } else {
                     content.append(name);
@@ -1037,7 +1097,7 @@ public class TestValue extends TestGroup {
             }
         }
         if (detected.isGroupDetected()) {
-            if (this.getGroup() == null){
+            if (this.getGroup() == null) {
                 content.append(',');
             } else {
                 content.append(this.getGroup());
@@ -1067,19 +1127,20 @@ public class TestValue extends TestGroup {
 
     /**
      * Generate the CSV state content to describe this result state [CSV EXPORT]
-     * @param key Result hash value
+     *
+     * @param key      Result hash value
      * @param detected Key characteristic of this set of results
-     * @param builds List of build numbers
+     * @param builds   List of build numbers
      * @return CSV table state content for result
      */
-    public String getCSVResultState(Integer key, ContentDetected detected, TreeSet<Integer> builds ) {
+    public String getCSVResultState(Integer key, ContentDetected detected, TreeSet<Integer> builds) {
         StringBuffer content = new StringBuffer();
         if (detected.isFileDetected()) {
-            if (this.getParent() == null){
+            if (this.getParent() == null) {
                 content.append(',');
             } else {
                 String name = this.getParent().getName();
-                if ( name.equalsIgnoreCase("__root__")){
+                if (name.equalsIgnoreCase("__root__")) {
                     content.append(',');
                 } else {
                     content.append(name);
@@ -1088,7 +1149,7 @@ public class TestValue extends TestGroup {
             }
         }
         if (detected.isGroupDetected()) {
-            if (this.getGroup() == null){
+            if (this.getGroup() == null) {
                 content.append(',');
             } else {
                 content.append(this.getGroup());
@@ -1106,7 +1167,7 @@ public class TestValue extends TestGroup {
         }
         for (int build = builds.last(); build >= builds.first(); build--) {
             Boolean state = this.getFailedState(build);
-            if (state == null){
+            if (state == null) {
                 content.append(",-");
             } else {
                 if (state == false) {
@@ -1123,14 +1184,15 @@ public class TestValue extends TestGroup {
 
     /**
      * Generate the HTML content for all the parameters for this result at a determined build [DETAIL PAGE]
-     * @param build Build number
+     *
+     * @param build            Build number
      * @param decimalSeparator Decimal Separator
      * @return HTML content for all parameters
      */
     public String getHTMLParameters(Integer build, char decimalSeparator) {
         StringBuffer content = new StringBuffer();
         List<TestValue> parameters = getParameters(build);
-        if (parameters != null && parameters.size() != 0){
+        if (parameters != null && parameters.size() != 0) {
             Integer i = 1;
             for (TestValue parameter : parameters) {
                 content.append(parameter.getHTMLParameter(i, build, decimalSeparator));
@@ -1142,8 +1204,9 @@ public class TestValue extends TestGroup {
 
     /**
      * Generate the HTML content for this parameter [DETAIL PAGE]
-     * @param number Displayed parameter number
-     * @param build Build number
+     *
+     * @param number           Displayed parameter number
+     * @param build            Build number
      * @param decimalSeparator Decimal Separator
      * @return HTML content for this parameter
      */
@@ -1187,42 +1250,55 @@ public class TestValue extends TestGroup {
 
     /**
      * Assemble the HTML content to display the condensed table [TABLE PAGE]
-     * @param key Result key
-     * @param detected Key characteristics of results
+     *
+     * @param key              Result key
+     * @param detected         Key characteristics of results
      * @param decimalSeparator Decimal separator
      * @return HTML content
      */
-    public String getHTMLCondensed(Integer key, ContentDetected detected, char decimalSeparator) { return ""; }
+    public String getHTMLCondensed(Integer key, ContentDetected detected, char decimalSeparator) {
+        return "";
+    }
 
     /**
      * Assemble the HTML content to display the condensed table [DETAIL PAGE]
-     * @param detected Key characteristics of results
+     *
+     * @param detected         Key characteristics of results
      * @param decimalSeparator Decimal separator
      * @return HTML content
      */
-    public String getHTMLCondensedDetail(ContentDetected detected, char decimalSeparator) { return ""; }
+    public String getHTMLCondensedDetail(ContentDetected detected, char decimalSeparator) {
+        return "";
+    }
 
     /**
      * Assemble the CSV content to display the condensed table [CSV EXPORT]
+     *
      * @param detected Key characteristics of results
      * @return CSV content
      */
-    public String getCSVCondensed(ContentDetected detected) { return ""; }
+    public String getCSVCondensed(ContentDetected detected) {
+        return "";
+    }
 
     /**
      * Create an JSON object with the condensed information of this result [EXPORT CONDENSED]
+     *
      * @param build Build number
-     * @param hash Result hash
+     * @param hash  Result hash
      * @return JSON object
      */
-    public JsonObject getCondensedJsonObject (int build, int hash) { return null; }
+    public JsonObject getCondensedJsonObject(int build, int hash) {
+        return null;
+    }
 
     /**
      * Return whether the TestValue is based on numeral values
+     *
      * @return Whether class is numeral
      */
-    public Boolean isNumeral(){
-        switch(type){
+    public Boolean isNumeral() {
+        switch (type) {
             case rt_double:
             case rt_integer:
                 return true;
@@ -1233,15 +1309,17 @@ public class TestValue extends TestGroup {
 
     /**
      * Check attached thresholds to verify result validity.
+     *
      * @param previous Previous value
-     * @param average Calculated average
+     * @param average  Calculated average
      */
-    public void checkThresholdStatus(Double previous, Double average) { }
+    public void checkThresholdStatus(Double previous, Double average) {
+    }
 
     // Setters
 
-    public void setId(Integer id){
-        setId(0, id);
+    public void setId(Integer id) {
+        setId(buildNumber, id);
     }
 
     public void setId(int build, Integer id) {
@@ -1259,12 +1337,13 @@ public class TestValue extends TestGroup {
         }
     }
 
-    public void setFailedState(Boolean failed){
-        setFailedState(0, failed);
+    public void setFailedState(Boolean failed) {
+        setFailedState(buildNumber, failed);
     }
 
     public void setFailedState(int build, Boolean failed) {
-        if (failed == null){
+
+        if (failed == null) {
             return;
         } else {
             TestProperty properties = this.properties.get(build);
@@ -1282,8 +1361,8 @@ public class TestValue extends TestGroup {
         }
     }
 
-    public void setMessage(String title, String message){
-        setMessage(0, title, message);
+    public void setMessage(String title, String message) {
+        setMessage(buildNumber, title, message);
     }
 
     public void setMessage(int build, String title, String message) {
@@ -1291,18 +1370,18 @@ public class TestValue extends TestGroup {
         if (properties == null) {
             properties = new TestProperty();
             properties.addMessage(title, message);
-            this.properties.put( build, properties);
+            this.properties.put(build, properties);
         } else {
             properties.addMessage(title, message);
         }
     }
 
     public void setMessages(Map<String, String> messages) {
-        setMessages(0, messages);
+        setMessages(buildNumber, messages);
     }
 
     public void setMessages(int build, Map<String, String> messages) {
-        if (messages == null || messages.size() == 0){
+        if (messages == null || messages.size() == 0) {
             return;
         } else {
             TestProperty properties = this.properties.get(build);
@@ -1317,10 +1396,10 @@ public class TestValue extends TestGroup {
     }
 
     public void setParameter(TestValue parameter) {
-        setParameter(0, parameter);
+        setParameter(buildNumber, parameter);
     }
 
-    public void  setParameter(int build, TestValue parameter) {
+    public void setParameter(int build, TestValue parameter) {
         if (parameter == null) {
             return;
         } else {
@@ -1336,10 +1415,10 @@ public class TestValue extends TestGroup {
     }
 
     public void setParameters(List<TestValue> parameters) {
-        setParameters(0, parameters);
+        setParameters(buildNumber, parameters);
     }
 
-    public void  setParameters(int build, List<TestValue> parameters) {
+    public void setParameters(int build, List<TestValue> parameters) {
         if (parameters == null || parameters.size() == 0) {
             return;
         } else {
@@ -1354,31 +1433,47 @@ public class TestValue extends TestGroup {
         }
     }
 
-    public void setGroup() { this.group = this.getParent().getFileSubGroupFullName(); }
-    public void setGroup(String group) { this.group = group; }
+    public void setGroup() {
+        this.group = this.getParent().getFileSubGroupFullName();
+    }
+
+    public void setGroup(String group) {
+        this.group = group;
+    }
 
     // Getters
 
-    public ValueType getType() { return type; }
-    public String getGroup() { return group; }
-    public String getUnit() { return unit; }
+    public ValueType getType() {
+        return type;
+    }
 
-    public ConcurrentHashMap<Integer, TestProperty> getProperties() { return properties; }
+    public String getGroup() {
+        return group;
+    }
 
-    public String getValueAsString(int build) { return ""; }
-    public String getValueAsLocaleString(int build, char decimalSeparator) { return ""; }
+    public String getUnit() {
+        return unit;
+    }
+
+    public ConcurrentHashMap<Integer, TestProperty> getProperties() {
+        return properties;
+    }
+
+    public String getValueAsString(int build) {
+        return "";
+    }
+
+    public String getValueAsLocaleString(int build, char decimalSeparator) {
+        return "";
+    }
 
     public Boolean getFailedState() {
-        TestProperty property = this.properties.get(0);
-        if (property == null) {
-            return null;
-        } else {
-            return property.getFailedState();
-        }
+        return getFailedState(buildNumber);
     }
+
     public Boolean getFailedState(int build) {
         TestProperty property = this.properties.get(build);
-        if (property == null){
+        if (property == null) {
             return null;
         } else {
             return property.getFailedState();
@@ -1386,13 +1481,9 @@ public class TestValue extends TestGroup {
     }
 
     public Integer getId() {
-        TestProperty property = this.properties.get(0);
-        if (property == null) {
-            return null;
-        } else {
-            return property.getId();
-        }
+        return getId(buildNumber);
     }
+
     public Integer getId(int build) {
         TestProperty property = this.properties.get(build);
         if (property == null) {
@@ -1402,15 +1493,11 @@ public class TestValue extends TestGroup {
         }
     }
 
-    public Map<String,String> getMessages() {
-        TestProperty property = this.properties.get(0);
-        if (property == null) {
-            return null;
-        } else {
-            return property.getMessages();
-        }
+    public Map<String, String> getMessages() {
+        return getMessages(buildNumber);
     }
-    public Map<String,String> getMessages(int build) {
+
+    public Map<String, String> getMessages(int build) {
         TestProperty property = this.properties.get(build);
         if (property == null) {
             return null;
@@ -1420,12 +1507,7 @@ public class TestValue extends TestGroup {
     }
 
     public List<TestValue> getParameters() {
-        TestProperty property = this.properties.get(0);
-        if (property == null) {
-            return null;
-        } else {
-            return property.getParameters();
-        }
+        return getParameters(buildNumber);
     }
 
     public List<TestValue> getParameters(int build) {
@@ -1437,7 +1519,7 @@ public class TestValue extends TestGroup {
         }
     }
 
-    protected String getColor(Boolean failedState){
+    protected String getColor(Boolean failedState) {
         if (failedState) {
             return FAILED_STATE_COLOR;
         } else {
@@ -1445,7 +1527,9 @@ public class TestValue extends TestGroup {
         }
     }
 
-    public int getNumberOfProperties() { return properties.size(); }
+    public int getNumberOfProperties() {
+        return properties.size();
+    }
 
     protected static ValueType checkType(String type) {
         type = type.toLowerCase();
@@ -1476,5 +1560,7 @@ public class TestValue extends TestGroup {
         }
     }
 
-    public JsonArray getDataAsJsonArray(TreeSet<Integer> buildNumbers) throws InvalidClassException { throw new InvalidClassException(Messages.TestValue_TestValueNotNumeral());}
+    public JsonArray getDataAsJsonArray(TreeSet<Integer> buildNumbers) throws InvalidClassException {
+        throw new InvalidClassException(Messages.TestValue_TestValueNotNumeral());
+    }
 }

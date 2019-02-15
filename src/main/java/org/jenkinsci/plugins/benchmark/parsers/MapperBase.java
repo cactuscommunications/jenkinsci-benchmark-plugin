@@ -22,6 +22,7 @@ import com.google.gson.*;
 import hudson.model.TaskListener;
 import org.jenkinsci.plugins.benchmark.condensed.DoubleCondensed;
 import org.jenkinsci.plugins.benchmark.condensed.IntegerCondensed;
+import org.jenkinsci.plugins.benchmark.core.BenchmarkPublisher;
 import org.jenkinsci.plugins.benchmark.exceptions.ValidationException;
 import org.jenkinsci.plugins.benchmark.results.*;
 import org.jenkinsci.plugins.benchmark.thresholds.Threshold;
@@ -103,7 +104,12 @@ public class MapperBase {
                                     DoubleValue dblValue = (DoubleValue) value;
                                     DoubleValue dblBaseValue = (DoubleValue) baseResult.getValue();
                                     Double dblV = dblValue.getValues().get(0);
+                                    if (build == null || dblV == null) {
+                                        BenchmarkPublisher.logger.println("ERROR! build: " + build + " dblV:" + dblV);
+                                        continue;
+                                    }
                                     dblValue.getValues().clear();
+                                    dblValue.setBuildNumber(build);
                                     dblValue.getValues().put(build, dblV);
                                     dblValue.getValues().putAll(dblBaseValue.getValues());
                                     if (dblValue.getProperties().size() > 0) {

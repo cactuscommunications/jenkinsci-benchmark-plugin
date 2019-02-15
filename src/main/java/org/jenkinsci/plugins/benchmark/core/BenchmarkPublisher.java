@@ -102,6 +102,7 @@ public class BenchmarkPublisher extends Recorder implements SimpleBuildStep {
     private transient Timer      timer;
     private transient Integer    selectedResult;
     private transient Integer    selectedBuild;
+    public static PrintStream logger;
 
     // Constructor
 
@@ -122,6 +123,9 @@ public class BenchmarkPublisher extends Recorder implements SimpleBuildStep {
 
     @Override
     public void perform(@Nonnull Run<?, ?> run, @Nonnull FilePath filePath, @Nonnull Launcher launcher, @Nonnull TaskListener taskListener) throws InterruptedException, IOException {
+
+        logger = taskListener.getLogger();
+
         Job project = run.getParent();
 
         run.addAction(new BenchmarkProjectAction(project, this));
@@ -197,17 +201,18 @@ public class BenchmarkPublisher extends Recorder implements SimpleBuildStep {
                 }
 
                 MapperBase base = getRawResults(run);
-                failed = mapper.checkThresholds(base);
+
 
                 // Log mapper core information
                 mapper.logKeyData(taskListener, altThresholds.size());
 
+                // Merge content
+                mapper.mergeWith(base);
+                failed = mapper.checkThresholds(base);
+
                 // Export build file
                 String outputFilename = run.getRootDir().getAbsolutePath() + File.separator + "BenchmarkResult.json";
                 mapper.exportToFile(outputFilename, projectName, buildNumber);
-
-                // Merge content
-                mapper.mergeWith(base);
 
                 // Update file with condensed results
                 String oFilename = run.getParent().getRootDir().getAbsolutePath() + File.separator + "BenchmarkCondensed.json";

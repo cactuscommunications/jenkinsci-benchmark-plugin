@@ -18,10 +18,10 @@
  */
 package org.jenkinsci.plugins.benchmark.condensed;
 
-import org.jenkinsci.plugins.benchmark.results.*;
+import org.jenkinsci.plugins.benchmark.results.DoubleValue;
+import org.jenkinsci.plugins.benchmark.results.Messages;
+import org.jenkinsci.plugins.benchmark.results.TestGroup;
 import org.jenkinsci.plugins.benchmark.utilities.ContentDetected;
-
-import java.util.TreeSet;
 
 /**
  * Holds the information for double condensed result

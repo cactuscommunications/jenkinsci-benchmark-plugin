@@ -1,0 +1,39 @@
+{
+  "description": "Evaluation metrics",
+  "failures": [
+    {
+      "value": -1
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "test": {
+      "type": "object",
+      "properties": {
+        "Average recall": {
+          "type": "resultFull"
+        },
+        "Average precision": {
+          "type": "resultFull"
+        },
+        "Average F1": {
+          "type": "resultFull"
+        },
+        "thresholds": {
+          "type": "array",
+          "items": {
+            "type": "Threshold",
+            "properties": {
+              "method": {
+                "type": "method"
+              },
+              "delta": {
+                "type": "delta"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

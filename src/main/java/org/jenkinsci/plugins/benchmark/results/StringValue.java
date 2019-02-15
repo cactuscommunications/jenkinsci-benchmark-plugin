@@ -29,41 +29,32 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author Daniel Mercier
  * @since 5/10/2017
  */
-public class StringValue extends TestValue {
-
-    // Variables
-    private final ConcurrentHashMap<Integer, String> values;
+public class StringValue extends TestValue<String> {
 
     // Constructor
 
     public StringValue(TestGroup parent, String group, String name){
         super(parent, group, name, null,  null, ValueType.rt_string);
-        this.values = new ConcurrentHashMap<Integer, String>();
     }
 
     public StringValue(TestGroup parent, String group, String name, String unit){
         super(parent, group, name, null,  unit, ValueType.rt_string);
-        this.values = new ConcurrentHashMap<Integer, String>();
     }
 
     public StringValue(TestGroup parent, String group, String name, String description, String unit){
         super(parent, group, name, description, unit, ValueType.rt_string);
-        this.values = new ConcurrentHashMap<Integer, String>();
     }
 
     public StringValue(TestGroup parent, String name, String unit, ClassType ctype){
         super(parent, null,name, null, unit, ValueType.rt_string, ctype);
-        this.values = new ConcurrentHashMap<Integer, String>();
     }
 
     public StringValue(TestGroup parent, String group, String name, String unit, ClassType ctype){
         super(parent, group, name, null, unit, ValueType.rt_string, ctype);
-        this.values = new ConcurrentHashMap<Integer, String>();
     }
 
     public StringValue(TestGroup parent, String group, String name, String description, String unit, ClassType ctype){
         super(parent, group, name, description, unit, ValueType.rt_string, ctype);
-        this.values = new ConcurrentHashMap<Integer, String>();
     }
 
     // Functions
@@ -163,14 +154,4 @@ public class StringValue extends TestValue {
             return value;
         }
     }
-
-    // Setter
-
-    public void setValue( String value ){ this.values.put(0, value); }
-    public void setValue( int build, String value ){ this.values.put(build, value); }
-
-    // Getter
-    public Map<Integer, String> getValues() { return this.values; }
-    public String getValue() { return this.values.get(0); }
-    public String getValue(int build) { return this.values.get(build); }
 }

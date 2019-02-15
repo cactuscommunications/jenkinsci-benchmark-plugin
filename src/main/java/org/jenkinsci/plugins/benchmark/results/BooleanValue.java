@@ -1,15 +1,15 @@
 /**
  * MIT license
  * Copyright 2017 Autodesk, Inc.
- *
+ * <p>
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
  * documentation files (the "Software"), to deal in the Software without restriction, including without limitation
  * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
  * and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
- *
+ * <p>
  * The above copyright notice and this permission notice shall be included in all copies or substantial portions
  * of the Software.
- *
+ * <p>
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
  * TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
@@ -20,51 +20,38 @@ package org.jenkinsci.plugins.benchmark.results;
 
 import com.google.gson.JsonObject;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 /**
  * Holds the information for boolean test result
  *
  * @author Daniel Mercier
  * @since 5/10/2017
  */
-public class BooleanValue extends TestValue {
-
-    // Variables
-
-    private final ConcurrentHashMap<Integer, Boolean> values;
+public class BooleanValue extends TestValue<Boolean> {
 
     // Constructor
 
-    public BooleanValue(TestGroup parent, String group, String name){
-        super(parent, group, name, null, null,  ValueType.rt_boolean);
-        this.values = new ConcurrentHashMap<Integer, Boolean>();
+    public BooleanValue(TestGroup parent, String group, String name) {
+        super(parent, group, name, null, null, ValueType.rt_boolean);
     }
 
-    public BooleanValue(TestGroup parent, String group, String name, String unit){
-        super(parent, group, name, null, unit,  ValueType.rt_boolean);
-        this.values = new ConcurrentHashMap<Integer, Boolean>();
+    public BooleanValue(TestGroup parent, String group, String name, String unit) {
+        super(parent, group, name, null, unit, ValueType.rt_boolean);
     }
 
-    public BooleanValue(TestGroup parent, String group, String name, String description, String unit){
+    public BooleanValue(TestGroup parent, String group, String name, String description, String unit) {
         super(parent, group, name, description, unit, ValueType.rt_boolean);
-        this.values = new ConcurrentHashMap<Integer, Boolean>();
     }
 
-    public BooleanValue(TestGroup parent, String group, String name, ClassType ctype){
+    public BooleanValue(TestGroup parent, String group, String name, ClassType ctype) {
         super(parent, group, name, null, null, ValueType.rt_boolean, ctype);
-        this.values = new ConcurrentHashMap<Integer, Boolean>();
     }
 
-    public BooleanValue(TestGroup parent, String group, String name, String unit, ClassType ctype){
+    public BooleanValue(TestGroup parent, String group, String name, String unit, ClassType ctype) {
         super(parent, group, name, null, unit, ValueType.rt_boolean, ctype);
-        this.values = new ConcurrentHashMap<Integer, Boolean>();
     }
 
-    public BooleanValue(TestGroup parent, String group, String name, String description, String unit, ClassType ctype){
+    public BooleanValue(TestGroup parent, String group, String name, String description, String unit, ClassType ctype) {
         super(parent, group, name, description, unit, ValueType.rt_boolean, ctype);
-        this.values = new ConcurrentHashMap<Integer, Boolean>();
     }
 
     // Functions
@@ -95,14 +82,14 @@ public class BooleanValue extends TestValue {
         // Assemble JSON object
         JsonObject object = new JsonObject();
         object.addProperty("hash", hash);
-        if(this.group != null && !this.group.isEmpty()) {
+        if (this.group != null && !this.group.isEmpty()) {
             object.addProperty("group", this.group);
         }
         object.addProperty("name", this.name);
-        if(this.description != null && !this.description.isEmpty()) {
+        if (this.description != null && !this.description.isEmpty()) {
             object.addProperty("description", this.description);
         }
-        if(this.unit != null && !this.unit.isEmpty()) {
+        if (this.unit != null && !this.unit.isEmpty()) {
             object.addProperty("unit", this.unit);
         }
         object.addProperty("type", outputType(this.type));
@@ -161,14 +148,4 @@ public class BooleanValue extends TestValue {
         }
     }
 
-    // Setter
-
-    public void setValue( boolean value ){ this.values.put(0, value); }
-    public void setValue( int build, boolean value ){ this.values.put(build, value); }
-
-    // Getter
-
-    public Map<Integer, Boolean> getValues() { return this.values; }
-    public Boolean getValue() { return this.values.get(0); }
-    public Boolean getValue(int build) { return this.values.get(build); }
 }

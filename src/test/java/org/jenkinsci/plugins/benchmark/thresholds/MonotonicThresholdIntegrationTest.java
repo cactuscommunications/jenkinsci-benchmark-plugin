@@ -16,7 +16,7 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-package org.jenkinsci.plugins.benchmark;
+package org.jenkinsci.plugins.benchmark.thresholds;
 
 import hudson.Launcher;
 import hudson.model.*;
@@ -33,8 +33,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-
 /**
  * Plugin test including the full workflow.
  *
@@ -42,7 +40,7 @@ import static org.junit.Assert.assertEquals;
  * @ref https://wiki.jenkins.io/display/JENKINS/Unit+Test
  * @since 6/20/2017
  */
-public class BenchmarkPublisherTest {
+public class MonotonicThresholdIntegrationTest {
 
     private static String OS = System.getProperty("os.name").toLowerCase();
 
@@ -78,6 +76,69 @@ public class BenchmarkPublisherTest {
         File file = new File(outputfilename);
         assert (file.exists());
     }
+
+    private class ResultCreator extends TestBuilder {
+
+        private String path, content;
+
+        @Override
+        public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener buildListener) throws InterruptedException, IOException {
+            build.getWorkspace().child(this.path).write(this.content, "UTF-8");
+            return true;
+        }
+    }
+
+    @Test
+    public void testIncreasingMonotonic() throws Exception {
+        FreeStyleProject project = j.createFreeStyleProject();
+        //project.setCustomWorkspace("workspace");
+
+        final int numberOfMockedBuilds = 10;
+
+        // Add fake result file to workspace
+        double mockValue = 0.127511367281024;
+
+        final File customSchemaFile = new File("custom_schemas/jenkins_benchmark_plugin_schema.json");
+
+        ResultCreator creator = new ResultCreator();
+        creator.path = "result.json";
+        project.getBuildersList().add(creator);
+
+        BenchmarkPublisher publisher = new BenchmarkPublisher(
+                "result.json",
+                "customSchema",
+                true,
+                "",
+                customSchemaFile.getAbsolutePath()
+        );
+
+        // Activate the plugin
+        project.getPublishersList().add(
+                publisher);
+
+        project.save();
+
+        List<Result> results = new ArrayList<Result>();
+
+        for (int buildIndex = 0; buildIndex < numberOfMockedBuilds; buildIndex++) {
+
+            // Make mock value gradually larger
+            mockValue = mockValue * 1.05;
+
+            creator.content = "{\"test\": {\"Average recall\": " + mockValue + ", \"Average precision\": " + mockValue + ", \"Average F1\": " + mockValue + ",  \"thresholds\":[ {\"method\": \"deltamonotonic\", \"delta\": 0.1 }]}}";
+
+            FreeStyleBuild build = project.scheduleBuild2(0).get();
+
+            //assertEquals(Result.SUCCESS, build.getResult());
+
+            System.out.println(build.getDisplayName() + " completed");
+
+            results.add(build.getResult());
+        }
+
+        return;
+    }
+
 
     public static boolean isMac() {
         return (OS.contains("mac") || OS.contains("darwin"));

@@ -33,6 +33,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+
 /**
  * Plugin test including the full workflow.
  *
@@ -100,7 +103,7 @@ public class MonotonicThresholdIntegrationTest {
 
         final File customSchemaFile = new File("custom_schemas/jenkins_benchmark_plugin_schema.json");
 
-        ResultCreator creator = new ResultCreator();
+        final ResultCreator creator = new ResultCreator();
         creator.path = "result.json";
         project.getBuildersList().add(creator);
 
@@ -129,16 +132,70 @@ public class MonotonicThresholdIntegrationTest {
 
             FreeStyleBuild build = project.scheduleBuild2(0).get();
 
-            //assertEquals(Result.SUCCESS, build.getResult());
 
             System.out.println(build.getDisplayName() + " completed");
 
             results.add(build.getResult());
         }
 
-        return;
+        assertTrue(results.stream().allMatch(result -> result.equals(Result.SUCCESS)));
     }
 
+
+    @Test
+    public void testIncreasingMonotonicWithLowOutlier() throws Exception {
+
+        FreeStyleProject project = j.createFreeStyleProject();
+        //project.setCustomWorkspace("workspace");
+
+        final int numberOfMockedBuilds = 10;
+        final double outlier = 0.02;
+        final int outlierBuildIndex = 5;
+
+        // Add fake result file to workspace
+        double mockValue = 0.47511367281024;
+
+        final File customSchemaFile = new File("custom_schemas/jenkins_benchmark_plugin_schema.json");
+
+        final ResultCreator creator = new ResultCreator();
+        creator.path = "result.json";
+        project.getBuildersList().add(creator);
+
+        BenchmarkPublisher publisher = new BenchmarkPublisher(
+                "result.json",
+                "customSchema",
+                true,
+                "",
+                customSchemaFile.getAbsolutePath()
+        );
+
+        // Activate the plugin
+        project.getPublishersList().add(
+                publisher);
+
+        project.save();
+
+        for (int buildIndex = 0; buildIndex < numberOfMockedBuilds; buildIndex++) {
+
+            // Make mock value gradually larger
+            mockValue = mockValue * 1.05;
+
+            if (buildIndex == outlierBuildIndex) {
+                creator.content = "{\"test\": {\"Average recall\": " + outlier + ", \"Average precision\": " + outlier + ", \"Average F1\": " + outlier + ",  \"thresholds\":[ {\"method\": \"deltamonotonic\", \"delta\": 0.1 }]}}";
+            } else {
+                creator.content = "{\"test\": {\"Average recall\": " + mockValue + ", \"Average precision\": " + mockValue + ", \"Average F1\": " + mockValue + ",  \"thresholds\":[ {\"method\": \"deltamonotonic\", \"delta\": 0.1 }]}}";
+            }
+
+            FreeStyleBuild build = project.scheduleBuild2(0).get();
+            System.out.println(build.getDisplayName() + " completed");
+
+            if (buildIndex == outlierBuildIndex) {
+                assertSame(build.getResult(), Result.UNSTABLE);
+            } else {
+                assertSame(build.getResult(), Result.SUCCESS);
+            }
+        }
+    }
 
     public static boolean isMac() {
         return (OS.contains("mac") || OS.contains("darwin"));

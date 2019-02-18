@@ -46,17 +46,6 @@ public abstract class NumeralValue<T extends Number & Comparable<T>> extends Tes
         super(parent, group, name, description, unit, type, ctype);
     }
 
-    protected boolean isFailedBuild(int build) {
-        TestProperty property = this.properties.get(build);
-        if (property == null) {
-            //throw new IllegalStateException("Build has no property");
-            return false;
-        } else {
-            Boolean failedState = property.getFailedState();
-            return failedState != null && failedState;
-        }
-    }
-
     private static class en<T> implements Map.Entry<Integer, T> {
         int key;
         T value;

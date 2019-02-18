@@ -124,6 +124,17 @@ public abstract class TestValue<T> extends TestGroup {
 
     // Function
 
+    protected boolean isFailedBuild(int build) {
+        TestProperty property = this.properties.get(build);
+        if (property == null) {
+            //throw new IllegalStateException("Build has no property");
+            return false;
+        } else {
+            Boolean failedState = property.getFailedState();
+            return failedState != null && failedState;
+        }
+    }
+
     /**
      * Convert a JSON object containing a condensed result to the plugin construct [DISPLAY LOADING]
      *
